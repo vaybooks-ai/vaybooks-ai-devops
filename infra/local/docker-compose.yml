@@ -1,19 +1,19 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: vaybooks-postgres
+  mongodb:
+    image: mongo:7.0
+    container_name: vaybooks-mongodb
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-vaybooks}
-      POSTGRES_USER: ${POSTGRES_USER:-vaybooks}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vaybooks_dev}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-vaybooks}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-vaybooks_dev}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-vaybooks}
     ports:
-      - "5432:5432"
+      - "27017:27017"
     volumes:
-      - ./volumes/postgres-data:/var/lib/postgresql/data
+      - ./volumes/mongodb-data:/data/db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vaybooks}"]
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,9 +27,8 @@ services:
     container_name: vaybooks-backend-api
     environment:
       SPRING_PROFILES_ACTIVE: local
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-vaybooks}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-vaybooks}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-vaybooks_dev}
+      MONGODB_URI: mongodb://${MONGO_ROOT_USER:-vaybooks}:${MONGO_ROOT_PASSWORD:-vaybooks_dev}@mongodb:27017/${MONGO_DATABASE:-vaybooks}?authSource=admin
+      MONGODB_DATABASE: ${MONGO_DATABASE:-vaybooks}
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production-min-256-bits}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
       STORAGE_TYPE: LOCAL
@@ -44,7 +43,7 @@ services:
     volumes:
       - ./volumes/uploads:/data/uploads
     depends_on:
-      postgres:
+      mongodb:
         condition: service_healthy
     networks:
       - vaybooks-network
@@ -57,9 +56,8 @@ services:
     container_name: vaybooks-backend-worker
     environment:
       SPRING_PROFILES_ACTIVE: local
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-vaybooks}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-vaybooks}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-vaybooks_dev}
+      MONGODB_URI: mongodb://${MONGO_ROOT_USER:-vaybooks}:${MONGO_ROOT_PASSWORD:-vaybooks_dev}@mongodb:27017/${MONGO_DATABASE:-vaybooks}?authSource=admin
+      MONGODB_DATABASE: ${MONGO_DATABASE:-vaybooks}
       STORAGE_TYPE: LOCAL
       STORAGE_LOCAL_PATH: /data/uploads
       AI_PROVIDER: ${AI_PROVIDER:-OPENAI}
@@ -73,7 +71,7 @@ services:
     volumes:
       - ./volumes/uploads:/data/uploads
     depends_on:
-      postgres:
+      mongodb:
         condition: service_healthy
     networks:
       - vaybooks-network
@@ -83,6 +81,7 @@ services:
     build:
       context: ../../../vaybooks-ai-frontend
       dockerfile: Dockerfile
+      target: development
     container_name: vaybooks-frontend
     environment:
       VITE_API_URL: http://localhost:8080
@@ -103,5 +102,5 @@ networks:
     driver: bridge
 
 volumes:
-  postgres-data:
+  mongodb-data:
   uploads:
