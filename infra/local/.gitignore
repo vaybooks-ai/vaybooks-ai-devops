@@ -1,0 +1,8 @@
+# Ignore local volumes (data should not be committed)
+volumes/
+
+# Ignore local environment file (contains secrets)
+.env
+
+# Ignore logs
+*.log

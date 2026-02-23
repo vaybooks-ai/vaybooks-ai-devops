@@ -1,0 +1,71 @@
+version: '3.8'
+
+# PLACEHOLDER for Staging Environment
+# This will be configured when deploying to AWS/staging server
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: vaybooks-postgres-stage
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    # TODO: Configure persistent volume for staging
+    # TODO: Configure backup strategy
+    networks:
+      - vaybooks-network
+
+  backend-api:
+    image: vaybooks-backend-api:latest
+    container_name: vaybooks-backend-api-stage
+    environment:
+      SPRING_PROFILES_ACTIVE: stage
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      STORAGE_TYPE: S3
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET}
+      AWS_REGION: ${AWS_REGION}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    # TODO: Configure health checks
+    # TODO: Configure resource limits
+    # TODO: Configure logging
+    depends_on:
+      - postgres
+    networks:
+      - vaybooks-network
+
+  backend-worker:
+    image: vaybooks-backend-worker:latest
+    container_name: vaybooks-backend-worker-stage
+    environment:
+      SPRING_PROFILES_ACTIVE: stage
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      STORAGE_TYPE: S3
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET}
+      AWS_REGION: ${AWS_REGION}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    depends_on:
+      - postgres
+    networks:
+      - vaybooks-network
+
+  frontend:
+    image: vaybooks-frontend:latest
+    container_name: vaybooks-frontend-stage
+    environment:
+      VITE_API_URL: ${VITE_API_URL}
+    # TODO: Configure nginx for production serving
+    # TODO: Configure SSL/TLS
+    depends_on:
+      - backend-api
+    networks:
+      - vaybooks-network
+
+networks:
+  vaybooks-network:
+    driver: bridge
